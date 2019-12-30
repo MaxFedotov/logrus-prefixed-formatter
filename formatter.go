@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/mgutz/ansi"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -224,6 +224,7 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 func (f *TextFormatter) printColored(b *bytes.Buffer, entry *logrus.Entry, keys []string, timestampFormat string, colorScheme *compiledColorScheme) {
 	var levelColor func(string) string
 	var levelText string
+	var level string
 	switch entry.Level {
 	case logrus.InfoLevel:
 		levelColor = colorScheme.InfoLevelColor
@@ -249,12 +250,16 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *logrus.Entry, keys 
 		levelText = strings.ToUpper(levelText)
 	}
 
-	level := levelColor(fmt.Sprintf("%5s", levelText))
+	if entry.Level == logrus.InfoLevel || entry.Level == logrus.WarnLevel {
+		level = levelColor(fmt.Sprintf(" [%s]", levelText))
+	} else {
+		level = levelColor(fmt.Sprintf("[%5s]", levelText))
+	}
 	prefix := ""
 	message := entry.Message
 
 	if prefixValue, ok := entry.Data["prefix"]; ok {
-		prefix = colorScheme.PrefixColor(" " + prefixValue.(string) + ":")
+		prefix = colorScheme.PrefixColor(" [" + strings.ToUpper(prefixValue.(string)) + "]")
 	} else {
 		prefixValue, trimmedMsg := extractPrefix(entry.Message)
 		if len(prefixValue) > 0 {
@@ -273,9 +278,9 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *logrus.Entry, keys 
 	} else {
 		var timestamp string
 		if !f.FullTimestamp {
-			timestamp = fmt.Sprintf("[%04d]", miniTS())
+			timestamp = fmt.Sprintf("%04d", miniTS())
 		} else {
-			timestamp = fmt.Sprintf("[%s]", entry.Time.Format(timestampFormat))
+			timestamp = fmt.Sprintf("%s", entry.Time.Format(timestampFormat))
 		}
 		fmt.Fprintf(b, "%s %s%s "+messageFormat, colorScheme.TimestampColor(timestamp), level, prefix, message)
 	}
